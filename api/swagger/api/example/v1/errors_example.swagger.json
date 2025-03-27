@@ -1,0 +1,186 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "title": "api/example/v1/errors_example.proto",
+    "version": "version not set"
+  },
+  "tags": [
+    {
+      "name": "ErrorsExampleService"
+    }
+  ],
+  "consumes": [
+    "application/json"
+  ],
+  "produces": [
+    "application/json"
+  ],
+  "paths": {
+    "/v1/items/{itemId}": {
+      "get": {
+        "summary": "GetItem 获取项目并返回标准错误格式",
+        "operationId": "ErrorsExampleService_GetItem",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1GetItemResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "itemId",
+            "description": "项目ID",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "ErrorsExampleService"
+        ]
+      }
+    }
+  },
+  "definitions": {
+    "errorsError": {
+      "type": "object",
+      "properties": {
+        "code": {
+          "type": "integer",
+          "format": "int32",
+          "title": "错误码，例如 NOT_FOUND, ALREADY_EXISTS"
+        },
+        "namespace": {
+          "type": "string",
+          "title": "错误的命名空间或领域"
+        },
+        "reason": {
+          "type": "string",
+          "title": "业务错误码，用于标识具体的错误类型"
+        },
+        "message": {
+          "type": "string",
+          "title": "面向用户的错误消息"
+        },
+        "metadata": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "title": "错误元数据，存储键值对"
+        }
+      },
+      "title": "Error 定义标准错误结构"
+    },
+    "errorsErrorDetails": {
+      "type": "object",
+      "properties": {
+        "stack": {
+          "type": "string",
+          "title": "完整错误栈，用于调试"
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "int64",
+          "title": "错误发生的时间戳（Unix时间戳，毫秒）"
+        },
+        "requestId": {
+          "type": "string",
+          "title": "请求ID，用于跟踪和诊断"
+        },
+        "service": {
+          "type": "string",
+          "title": "错误发生的服务名称"
+        },
+        "environment": {
+          "type": "string",
+          "title": "错误发生的环境（如 dev, test, prod）"
+        }
+      },
+      "title": "ErrorDetails 包含更多的错误信息"
+    },
+    "errorsErrorResponse": {
+      "type": "object",
+      "properties": {
+        "error": {
+          "$ref": "#/definitions/errorsError",
+          "title": "主要错误信息"
+        },
+        "details": {
+          "$ref": "#/definitions/errorsErrorDetails",
+          "title": "详细错误信息（可选）"
+        }
+      },
+      "title": "ErrorResponse 是API返回的标准错误响应"
+    },
+    "protobufAny": {
+      "type": "object",
+      "properties": {
+        "@type": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": {}
+    },
+    "rpcStatus": {
+      "type": "object",
+      "properties": {
+        "code": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "message": {
+          "type": "string"
+        },
+        "details": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/protobufAny"
+          }
+        }
+      }
+    },
+    "v1GetItemResponse": {
+      "type": "object",
+      "properties": {
+        "item": {
+          "$ref": "#/definitions/v1Item",
+          "title": "项目数据"
+        },
+        "error": {
+          "$ref": "#/definitions/errorsErrorResponse",
+          "title": "标准错误响应"
+        }
+      },
+      "title": "GetItemResponse 获取项目的响应"
+    },
+    "v1Item": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "title": "项目ID"
+        },
+        "name": {
+          "type": "string",
+          "title": "项目名称"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "int64",
+          "title": "创建时间"
+        }
+      },
+      "title": "Item 表示一个项目"
+    }
+  }
+}

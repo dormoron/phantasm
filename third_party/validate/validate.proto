@@ -1,0 +1,600 @@
+syntax = "proto3";
+package validate;
+
+import "google/protobuf/descriptor.proto";
+import "google/protobuf/duration.proto";
+import "google/protobuf/timestamp.proto";
+
+// 将消息级别的验证规则放在这里，并将其作为message选项使用
+option go_package = "github.com/envoyproxy/protoc-gen-validate/validate;validate";
+
+// FieldRules封装了字段的验证规则，特定于字段的类型。
+message FieldRules {
+  // 根据字段的类型，应该在以下oneof中设置一个值
+  oneof type {
+    // 标量字段类型
+    FloatRules float = 1;
+    DoubleRules double = 2;
+    Int32Rules int32 = 3;
+    Int64Rules int64 = 4;
+    UInt32Rules uint32 = 5;
+    UInt64Rules uint64 = 6;
+    SInt32Rules sint32 = 7;
+    SInt64Rules sint64 = 8;
+    Fixed32Rules fixed32 = 9;
+    Fixed64Rules fixed64 = 10;
+    SFixed32Rules sfixed32 = 11;
+    SFixed64Rules sfixed64 = 12;
+    BoolRules bool = 13;
+    StringRules string = 14;
+    BytesRules bytes = 15;
+
+    // 复杂类型
+    EnumRules enum = 16;
+    MessageRules message = 17;
+    RepeatedRules repeated = 18;
+    MapRules map = 19;
+
+    // 结构类型
+    AnyRules any = 20;
+    DurationRules duration = 21;
+    TimestampRules timestamp = 22;
+  }
+}
+
+// FloatRules描述浮点类型的约束
+message FloatRules {
+  // const要求字段是指定的值
+  float const = 1;
+
+  // lt要求该字段小于指定的值（不包含等于）
+  float lt = 2;
+
+  // lte要求该字段小于或等于指定的值
+  float lte = 3;
+
+  // gt要求该字段大于指定的值（不包含等于）
+  float gt = 4;
+
+  // gte要求该字段大于或等于指定的值
+  float gte = 5;
+
+  // in要求该字段是指定的集合中的一个值
+  repeated float in = 6;
+
+  // not_in要求该字段不是指定的集合中的值
+  repeated float not_in = 7;
+}
+
+// DoubleRules 描述双精度浮点类型的约束
+message DoubleRules {
+  // const要求字段是指定的值
+  double const = 1;
+
+  // lt要求该字段小于指定的值（不包含等于）
+  double lt = 2;
+
+  // lte要求该字段小于或等于指定的值
+  double lte = 3;
+
+  // gt要求该字段大于指定的值（不包含等于）
+  double gt = 4;
+
+  // gte要求该字段大于或等于指定的值
+  double gte = 5;
+
+  // in要求该字段是指定的集合中的一个值
+  repeated double in = 6;
+
+  // not_in要求该字段不是指定的集合中的值
+  repeated double not_in = 7;
+}
+
+// Int32Rules 描述 int32类型的约束
+message Int32Rules {
+  // const要求字段是指定的值
+  int32 const = 1;
+
+  // lt要求该字段小于指定的值（不包含等于）
+  int32 lt = 2;
+
+  // lte要求该字段小于或等于指定的值
+  int32 lte = 3;
+
+  // gt要求该字段大于指定的值（不包含等于）
+  int32 gt = 4;
+
+  // gte要求该字段大于或等于指定的值
+  int32 gte = 5;
+
+  // in要求该字段是指定的集合中的一个值
+  repeated int32 in = 6;
+
+  // not_in要求该字段不是指定的集合中的值
+  repeated int32 not_in = 7;
+}
+
+// Int64Rules 描述 int64类型的约束
+message Int64Rules {
+  // const要求字段是指定的值
+  int64 const = 1;
+
+  // lt要求该字段小于指定的值（不包含等于）
+  int64 lt = 2;
+
+  // lte要求该字段小于或等于指定的值
+  int64 lte = 3;
+
+  // gt要求该字段大于指定的值（不包含等于）
+  int64 gt = 4;
+
+  // gte要求该字段大于或等于指定的值
+  int64 gte = 5;
+
+  // in要求该字段是指定的集合中的一个值
+  repeated int64 in = 6;
+
+  // not_in要求该字段不是指定的集合中的值
+  repeated int64 not_in = 7;
+}
+
+// UInt32Rules 描述 uint32类型的约束
+message UInt32Rules {
+  // const要求字段是指定的值
+  uint32 const = 1;
+
+  // lt要求该字段小于指定的值（不包含等于）
+  uint32 lt = 2;
+
+  // lte要求该字段小于或等于指定的值
+  uint32 lte = 3;
+
+  // gt要求该字段大于指定的值（不包含等于）
+  uint32 gt = 4;
+
+  // gte要求该字段大于或等于指定的值
+  uint32 gte = 5;
+
+  // in要求该字段是指定的集合中的一个值
+  repeated uint32 in = 6;
+
+  // not_in要求该字段不是指定的集合中的值
+  repeated uint32 not_in = 7;
+}
+
+// UInt64Rules 描述 uint64类型的约束
+message UInt64Rules {
+  // const要求字段是指定的值
+  uint64 const = 1;
+
+  // lt要求该字段小于指定的值（不包含等于）
+  uint64 lt = 2;
+
+  // lte要求该字段小于或等于指定的值
+  uint64 lte = 3;
+
+  // gt要求该字段大于指定的值（不包含等于）
+  uint64 gt = 4;
+
+  // gte要求该字段大于或等于指定的值
+  uint64 gte = 5;
+
+  // in要求该字段是指定的集合中的一个值
+  repeated uint64 in = 6;
+
+  // not_in要求该字段不是指定的集合中的值
+  repeated uint64 not_in = 7;
+}
+
+// SInt32Rules 描述 sint32类型的约束
+message SInt32Rules {
+  // const要求字段是指定的值
+  sint32 const = 1;
+
+  // lt要求该字段小于指定的值（不包含等于）
+  sint32 lt = 2;
+
+  // lte要求该字段小于或等于指定的值
+  sint32 lte = 3;
+
+  // gt要求该字段大于指定的值（不包含等于）
+  sint32 gt = 4;
+
+  // gte要求该字段大于或等于指定的值
+  sint32 gte = 5;
+
+  // in要求该字段是指定的集合中的一个值
+  repeated sint32 in = 6;
+
+  // not_in要求该字段不是指定的集合中的值
+  repeated sint32 not_in = 7;
+}
+
+// SInt64Rules 描述 sint64类型的约束
+message SInt64Rules {
+  // const要求字段是指定的值
+  sint64 const = 1;
+
+  // lt要求该字段小于指定的值（不包含等于）
+  sint64 lt = 2;
+
+  // lte要求该字段小于或等于指定的值
+  sint64 lte = 3;
+
+  // gt要求该字段大于指定的值（不包含等于）
+  sint64 gt = 4;
+
+  // gte要求该字段大于或等于指定的值
+  sint64 gte = 5;
+
+  // in要求该字段是指定的集合中的一个值
+  repeated sint64 in = 6;
+
+  // not_in要求该字段不是指定的集合中的值
+  repeated sint64 not_in = 7;
+}
+
+// Fixed32Rules 描述 fixed32类型的约束
+message Fixed32Rules {
+  // const要求字段是指定的值
+  fixed32 const = 1;
+
+  // lt要求该字段小于指定的值（不包含等于）
+  fixed32 lt = 2;
+
+  // lte要求该字段小于或等于指定的值
+  fixed32 lte = 3;
+
+  // gt要求该字段大于指定的值（不包含等于）
+  fixed32 gt = 4;
+
+  // gte要求该字段大于或等于指定的值
+  fixed32 gte = 5;
+
+  // in要求该字段是指定的集合中的一个值
+  repeated fixed32 in = 6;
+
+  // not_in要求该字段不是指定的集合中的值
+  repeated fixed32 not_in = 7;
+}
+
+// Fixed64Rules 描述 fixed64类型的约束
+message Fixed64Rules {
+  // const要求字段是指定的值
+  fixed64 const = 1;
+
+  // lt要求该字段小于指定的值（不包含等于）
+  fixed64 lt = 2;
+
+  // lte要求该字段小于或等于指定的值
+  fixed64 lte = 3;
+
+  // gt要求该字段大于指定的值（不包含等于）
+  fixed64 gt = 4;
+
+  // gte要求该字段大于或等于指定的值
+  fixed64 gte = 5;
+
+  // in要求该字段是指定的集合中的一个值
+  repeated fixed64 in = 6;
+
+  // not_in要求该字段不是指定的集合中的值
+  repeated fixed64 not_in = 7;
+}
+
+// SFixed32Rules 描述 sfixed32类型的约束
+message SFixed32Rules {
+  // const要求字段是指定的值
+  sfixed32 const = 1;
+
+  // lt要求该字段小于指定的值（不包含等于）
+  sfixed32 lt = 2;
+
+  // lte要求该字段小于或等于指定的值
+  sfixed32 lte = 3;
+
+  // gt要求该字段大于指定的值（不包含等于）
+  sfixed32 gt = 4;
+
+  // gte要求该字段大于或等于指定的值
+  sfixed32 gte = 5;
+
+  // in要求该字段是指定的集合中的一个值
+  repeated sfixed32 in = 6;
+
+  // not_in要求该字段不是指定的集合中的值
+  repeated sfixed32 not_in = 7;
+}
+
+// SFixed64Rules 描述 sfixed64类型的约束
+message SFixed64Rules {
+  // const要求字段是指定的值
+  sfixed64 const = 1;
+
+  // lt要求该字段小于指定的值（不包含等于）
+  sfixed64 lt = 2;
+
+  // lte要求该字段小于或等于指定的值
+  sfixed64 lte = 3;
+
+  // gt要求该字段大于指定的值（不包含等于）
+  sfixed64 gt = 4;
+
+  // gte要求该字段大于或等于指定的值
+  sfixed64 gte = 5;
+
+  // in要求该字段是指定的集合中的一个值
+  repeated sfixed64 in = 6;
+
+  // not_in要求该字段不是指定的集合中的值
+  repeated sfixed64 not_in = 7;
+}
+
+// BoolRules 描述 bool类型的约束
+message BoolRules {
+  // const要求字段是指定的值
+  bool const = 1;
+}
+
+// StringRules 描述 string类型的约束
+message StringRules {
+  // const要求字段是指定的值
+  string const = 1;
+
+  // len要求字段的长度恰好是指定的值
+  uint64 len = 19;
+
+  // min_len要求字段的最小长度是指定的值
+  uint64 min_len = 2;
+
+  // max_len要求字段的最大长度是指定的值
+  uint64 max_len = 3;
+
+  // len_bytes要求字段的长度恰好是指定的字节长度
+  uint64 len_bytes = 20;
+
+  // min_bytes要求字段的最小长度是指定的字节长度
+  uint64 min_bytes = 4;
+
+  // max_bytes要求字段的最大长度是指定的字节长度
+  uint64 max_bytes = 5;
+
+  // pattern要求字段匹配指定的正则表达式(RE2)
+  string pattern = 6;
+
+  // prefix要求字段以指定的前缀开始
+  string prefix = 7;
+
+  // suffix要求字段以指定的后缀结束
+  string suffix = 8;
+
+  // contains要求字段包含指定的子字符串
+  string contains = 9;
+
+  // not_contains要求字段不包含指定的子字符串
+  string not_contains = 23;
+
+  // in要求该字段是指定的集合中的一个值
+  repeated string in = 10;
+
+  // not_in要求该字段不是指定的集合中的值
+  repeated string not_in = 11;
+
+  // 检查字符串是否符合特定格式的约束规则
+  oneof well_known {
+    // email要求字段是电子邮件地址
+    bool email = 12;
+
+    // hostname要求字段是主机名
+    bool hostname = 13;
+
+    // ip要求字段是IP(v4或v6)地址
+    bool ip = 14;
+
+    // ipv4要求字段是IPv4地址
+    bool ipv4 = 15;
+
+    // ipv6要求字段是IPv6地址
+    bool ipv6 = 16;
+
+    // uri要求字段是URI
+    bool uri = 17;
+
+    // uri_ref要求字段是URI引用
+    bool uri_ref = 18;
+
+    // address要求字段是IP或主机名
+    bool address = 21;
+
+    // uuid要求字段是有效的UUID
+    bool uuid = 22;
+  }
+}
+
+// BytesRules 描述 bytes类型的约束
+message BytesRules {
+  // const要求字段是指定的值
+  bytes const = 1;
+
+  // len要求字段的长度恰好是指定的值
+  uint64 len = 13;
+
+  // min_len要求字段的最小长度是指定的值
+  uint64 min_len = 2;
+
+  // max_len要求字段的最大长度是指定的值
+  uint64 max_len = 3;
+
+  // pattern要求字段匹配指定的正则表达式(RE2)
+  // 字段的值必须是有效的UTF-8字节
+  string pattern = 4;
+
+  // prefix要求字段以指定的前缀开始
+  bytes prefix = 5;
+
+  // suffix要求字段以指定的后缀结束
+  bytes suffix = 6;
+
+  // contains要求字段包含指定的子序列
+  bytes contains = 7;
+
+  // in要求该字段是指定的集合中的一个值
+  repeated bytes in = 8;
+
+  // not_in要求该字段不是指定的集合中的值
+  repeated bytes not_in = 9;
+
+  // 检查字节是否符合特定格式的约束规则
+  oneof well_known {
+    // ip要求字段是IP(v4或v6)地址的字节表示
+    bool ip = 10;
+
+    // ipv4要求字段是IPv4地址的字节表示
+    bool ipv4 = 11;
+
+    // ipv6要求字段是IPv6地址的字节表示
+    bool ipv6 = 12;
+  }
+}
+
+// EnumRules 描述 enum类型的约束
+message EnumRules {
+  // const要求字段是指定的整数，代表枚举值
+  int32 const = 1;
+
+  // defined_only要求字段的值必须是proto定义的值
+  bool defined_only = 2;
+
+  // in要求该字段是指定的集合中的一个值
+  repeated int32 in = 3;
+
+  // not_in要求该字段不是指定的集合中的值
+  repeated int32 not_in = 4;
+}
+
+// MessageRules 描述消息类型的约束
+message MessageRules {
+  // skip禁用此字段的校验
+  bool skip = 1;
+
+  // required要求此字段必须填充值
+  bool required = 2;
+}
+
+// RepeatedRules 描述repeated字段的约束
+message RepeatedRules {
+  // min_items要求重复字段的最小项目数
+  uint64 min_items = 1;
+
+  // max_items要求重复字段的最大项目数
+  uint64 max_items = 2;
+
+  // unique要求重复字段中的所有项目必须唯一
+  bool unique = 3;
+
+  // items应用规则到每个项目
+  FieldRules items = 4;
+}
+
+// MapRules 描述map字段的约束
+message MapRules {
+  // min_pairs要求map中的最小键值对数量
+  uint64 min_pairs = 1;
+
+  // max_pairs要求map中的最大键值对数量
+  uint64 max_pairs = 2;
+
+  // no_sparse要求map元素不使用默认值
+  bool no_sparse = 3;
+
+  // keys应用规则到每个键
+  FieldRules keys = 4;
+
+  // values应用规则到每个值
+  FieldRules values = 5;
+}
+
+// AnyRules 描述 google.protobuf.Any的约束
+message AnyRules {
+  // required要求此字段必须填充值
+  bool required = 1;
+
+  // in要求解析后的任何类型的URL是特定集合中的一个
+  repeated string in = 2;
+
+  // not_in要求解析后的任何类型的URL不在特定集合中
+  repeated string not_in = 3;
+}
+
+// DurationRules 描述 google.protobuf.Duration的约束
+message DurationRules {
+  // required要求此字段必须填充值
+  bool required = 1;
+
+  // const要求此字段恰为特定值
+  google.protobuf.Duration const = 2;
+
+  // lt要求此字段小于特定值
+  google.protobuf.Duration lt = 3;
+
+  // lte要求此字段小于或等于特定值
+  google.protobuf.Duration lte = 4;
+
+  // gt要求此字段大于特定值
+  google.protobuf.Duration gt = 5;
+
+  // gte要求此字段大于或等于特定值
+  google.protobuf.Duration gte = 6;
+
+  // in要求此字段是特定值集合中的一个
+  repeated google.protobuf.Duration in = 7;
+
+  // not_in要求此字段不是特定值集合中的一个
+  repeated google.protobuf.Duration not_in = 8;
+}
+
+// TimestampRules 描述 google.protobuf.Timestamp的约束
+message TimestampRules {
+  // required要求此字段必须填充值
+  bool required = 1;
+
+  // const要求此字段恰为特定值
+  google.protobuf.Timestamp const = 2;
+
+  // lt要求此字段小于特定值
+  google.protobuf.Timestamp lt = 3;
+
+  // lte要求此字段小于或等于特定值
+  google.protobuf.Timestamp lte = 4;
+
+  // gt要求此字段大于特定值
+  google.protobuf.Timestamp gt = 5;
+
+  // gte要求此字段大于或等于特定值
+  google.protobuf.Timestamp gte = 6;
+
+  // lt_now要求此字段小于当前时间
+  bool lt_now = 7;
+
+  // gt_now要求此字段大于当前时间
+  bool gt_now = 8;
+
+  // within要求此字段与当前时间的偏差在特定持续时间内
+  google.protobuf.Duration within = 9;
+}
+
+extend google.protobuf.MessageOptions {
+  // rules应用于消息中的所有字段
+  bool disabled = 1071;
+  bool ignored = 1072;
+}
+
+extend google.protobuf.OneofOptions {
+  // required要求该oneof中的某个字段必须设置
+  bool required = 1071;
+}
+
+extend google.protobuf.FieldOptions {
+  // rules定义应用于该字段的校验规则
+  FieldRules rules = 1071;
+} 

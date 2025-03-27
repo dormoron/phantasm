@@ -1,0 +1,63 @@
+// Copyright 2019 Google LLC.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+syntax = "proto3";
+
+package google.api;
+
+import "google/protobuf/descriptor.proto";
+
+option go_package = "google.golang.org/genproto/googleapis/api/annotations;annotations";
+option java_multiple_files = true;
+option java_outer_classname = "FieldBehaviorProto";
+option java_package = "com.google.api";
+option objc_class_prefix = "GAPI";
+
+extend google.protobuf.FieldOptions {
+  // 字段行为注解，用于描述字段的使用方式和限制
+  repeated FieldBehavior field_behavior = 1052;
+}
+
+// `FieldBehavior` 用于描述API字段的行为
+enum FieldBehavior {
+  // 未指定行为
+  FIELD_BEHAVIOR_UNSPECIFIED = 0;
+
+  // 表示字段是必填的
+  REQUIRED = 1;
+
+  // 表示创建资源时必须提供字段
+  REQUIRED_FOR_CREATE = 2;
+
+  // 表示字段是输出字段，由API提供
+  OUTPUT_ONLY = 3;
+
+  // 表示字段是输入字段，由客户端提供
+  INPUT_ONLY = 4;
+
+  // 表示字段可以被设置为默认值
+  OPTIONAL = 5;
+
+  // 表示字段是不可变的，一旦设置就不能更改
+  IMMUTABLE = 6;
+
+  // 表示该字段处于未启用状态，不应该使用
+  UNORDERED_LIST = 7;
+
+  // 表示该字段是一个无序列表，顺序不重要
+  NON_EMPTY_DEFAULT = 8;
+
+  // 表示该字段是资源标识符
+  IDENTIFIER = 9;
+} 

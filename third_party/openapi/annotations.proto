@@ -1,0 +1,273 @@
+syntax = "proto3";
+
+package openapi;
+
+import "google/protobuf/descriptor.proto";
+
+option go_package = "phantasm/third_party/openapi;openapi";
+
+extend google.protobuf.FileOptions {
+  // 扩展字段，用于OpenAPI规范定义
+  Swagger swagger = 1042;
+}
+
+extend google.protobuf.ServiceOptions {
+  // 扩展字段，用于服务级别的Tag定义
+  Tag tag = 1042;
+}
+
+extend google.protobuf.MethodOptions {
+  // 扩展字段，用于API操作的定义
+  Operation operation = 1042;
+}
+
+extend google.protobuf.MessageOptions {
+  // 扩展字段，用于Schema定义
+  Schema schema = 1042;
+}
+
+extend google.protobuf.FieldOptions {
+  // 扩展字段，用于属性定义
+  Property property = 1042;
+}
+
+// Swagger定义了API规范的顶级信息
+message Swagger {
+  string swagger = 1; // OpenAPI规范版本，如"2.0"
+  Info info = 2; // API信息
+  string host = 3; // API主机域名
+  string base_path = 4; // API基础路径
+  repeated string schemes = 5; // 协议列表，如"http", "https"
+  repeated string consumes = 6; // 消费的内容类型
+  repeated string produces = 7; // 生产的内容类型
+  map<string, Response> responses = 8; // 全局响应定义
+  map<string, Parameter> parameters = 9; // 全局参数定义
+  map<string, Schema> definitions = 10; // 模型定义
+  ExternalDocs external_docs = 11; // 外部文档
+  map<string, SecurityScheme> security_definitions = 12; // 安全定义
+  repeated Security security = 13; // 全局安全配置
+  repeated Tag tags = 14; // 标签列表
+}
+
+// API信息
+message Info {
+  string title = 1; // API标题
+  string description = 2; // API描述
+  string terms_of_service = 3; // 服务条款URL
+  Contact contact = 4; // 联系人信息
+  License license = 5; // 许可证信息
+  string version = 6; // API版本
+}
+
+// 联系人信息
+message Contact {
+  string name = 1; // 联系人姓名
+  string url = 2; // 联系人URL
+  string email = 3; // 联系人邮箱
+}
+
+// 许可证信息
+message License {
+  string name = 1; // 许可证名称
+  string url = 2; // 许可证URL
+}
+
+// 外部文档
+message ExternalDocs {
+  string description = 1; // 文档描述
+  string url = 2; // 文档URL
+}
+
+// 标签定义
+message Tag {
+  string name = 1; // 标签名称
+  string description = 2; // 标签描述
+  ExternalDocs external_docs = 3; // 外部文档
+}
+
+// API操作
+message Operation {
+  repeated string tags = 1; // 操作标签
+  string summary = 2; // 操作摘要
+  string description = 3; // 操作描述
+  ExternalDocs external_docs = 4; // 外部文档
+  string operation_id = 5; // 操作ID
+  repeated string consumes = 6; // 消费的内容类型
+  repeated string produces = 7; // 生产的内容类型
+  repeated Parameter parameters = 8; // 参数列表
+  map<string, Response> responses = 9; // 响应定义
+  map<string, Schema> definitions = 10; // 模型定义
+  repeated string schemes = 11; // 协议列表
+  bool deprecated = 12; // 是否已废弃
+  repeated Security security = 13; // 安全配置
+}
+
+// 参数定义
+message Parameter {
+  string name = 1; // 参数名
+  string in = 2; // 参数位置，如"query", "header", "path", "formData", "body"
+  string description = 3; // 参数描述
+  bool required = 4; // 是否必须
+  Schema schema = 5; // 参数模式，用于body参数
+  string type = 6; // 简单参数类型
+  string format = 7; // 类型格式
+  bool allow_empty_value = 8; // 是否允许空值
+  Items items = 9; // 数组项定义
+  string collection_format = 10; // 集合格式
+  Value default = 11; // 默认值
+  double maximum = 12; // 最大值
+  bool exclusive_maximum = 13; // 是否排除最大值
+  double minimum = 14; // 最小值
+  bool exclusive_minimum = 15; // 是否排除最小值
+  int32 max_length = 16; // 最大长度
+  int32 min_length = 17; // 最小长度
+  string pattern = 18; // 正则表达式模式
+  int32 max_items = 19; // 最大项数
+  int32 min_items = 20; // 最小项数
+  bool unique_items = 21; // 项是否唯一
+  repeated string enum = 22; // 枚举值
+  double multiple_of = 23; // 倍数
+}
+
+// 项定义
+message Items {
+  string type = 1; // 类型
+  string format = 2; // 格式
+  Items items = 3; // 嵌套项
+  string collection_format = 4; // 集合格式
+  Value default = 5; // 默认值
+  double maximum = 6; // 最大值
+  bool exclusive_maximum = 7; // 是否排除最大值
+  double minimum = 8; // 最小值
+  bool exclusive_minimum = 9; // 是否排除最小值
+  int32 max_length = 10; // 最大长度
+  int32 min_length = 11; // 最小长度
+  string pattern = 12; // 正则表达式模式
+  int32 max_items = 13; // 最大项数
+  int32 min_items = 14; // 最小项数
+  bool unique_items = 15; // 项是否唯一
+  repeated string enum = 16; // 枚举值
+  double multiple_of = 17; // 倍数
+}
+
+// 响应定义
+message Response {
+  string description = 1; // 响应描述
+  Schema schema = 2; // 响应模式
+  map<string, Header> headers = 3; // 响应头定义
+  map<string, string> examples = 4; // 响应示例
+}
+
+// 头部定义
+message Header {
+  string description = 1; // 头部描述
+  string type = 2; // 头部类型
+  string format = 3; // 类型格式
+  Items items = 4; // 数组项定义
+  string collection_format = 5; // 集合格式
+  Value default = 6; // 默认值
+  double maximum = 7; // 最大值
+  bool exclusive_maximum = 8; // 是否排除最大值
+  double minimum = 9; // 最小值
+  bool exclusive_minimum = 10; // 是否排除最小值
+  int32 max_length = 11; // 最大长度
+  int32 min_length = 12; // 最小长度
+  string pattern = 13; // 正则表达式模式
+  int32 max_items = 14; // 最大项数
+  int32 min_items = 15; // 最小项数
+  bool unique_items = 16; // 项是否唯一
+  repeated string enum = 17; // 枚举值
+  double multiple_of = 18; // 倍数
+}
+
+// 架构定义
+message Schema {
+  string ref = 1; // 引用
+  string title = 2; // 标题
+  string description = 3; // 描述
+  Value default = 4; // 默认值
+  double multiple_of = 5; // 倍数
+  double maximum = 6; // 最大值
+  bool exclusive_maximum = 7; // 是否排除最大值
+  double minimum = 8; // 最小值
+  bool exclusive_minimum = 9; // 是否排除最小值
+  uint64 max_length = 10; // 最大长度
+  uint64 min_length = 11; // 最小长度
+  string pattern = 12; // 正则表达式模式
+  uint64 max_items = 13; // 最大项数
+  uint64 min_items = 14; // 最小项数
+  bool unique_items = 15; // 项是否唯一
+  uint64 max_properties = 16; // 最大属性数
+  uint64 min_properties = 17; // 最小属性数
+  repeated string required = 18; // 必须属性
+  repeated string enum = 19; // 枚举值
+  string type = 20; // 类型
+  Schema items = 21; // 数组项定义
+  repeated Schema all_of = 22; // allOf定义
+  map<string, Schema> properties = 23; // 对象属性
+  Schema additional_properties = 24; // 附加属性
+  bool readonly = 25; // 是否只读
+  XML xml = 26; // XML定义
+  ExternalDocs external_docs = 27; // 外部文档
+  string example = 28; // 示例
+}
+
+// XML定义
+message XML {
+  string name = 1; // 名称
+  string namespace = 2; // 命名空间
+  string prefix = 3; // 前缀
+  bool attribute = 4; // 是否属性
+  bool wrapped = 5; // 是否包装
+}
+
+// 属性定义
+message Property {
+  string description = 1; // 描述
+  string type = 2; // 类型
+  string format = 3; // 格式
+  string title = 4; // 标题
+  string description_field = 5; // 字段描述
+  Value default = 6; // 默认值
+  uint32 multiple_of = 7; // 倍数
+  double maximum = 8; // 最大值
+  bool exclusive_maximum = 9; // 是否排除最大值
+  double minimum = 10; // 最小值
+  bool exclusive_minimum = 11; // 是否排除最小值
+  uint64 max_length = 12; // 最大长度
+  uint64 min_length = 13; // 最小长度
+  string pattern = 14; // 正则表达式模式
+  uint64 max_items = 15; // 最大项数
+  uint64 min_items = 16; // 最小项数
+  bool unique_items = 17; // 项是否唯一
+  uint64 max_properties = 18; // 最大属性数
+  uint64 min_properties = 19; // 最小属性数
+  repeated string enum = 20; // 枚举值
+}
+
+// 安全方案
+message SecurityScheme {
+  string type = 1; // 类型，如"basic", "apiKey", "oauth2"
+  string description = 2; // 描述
+  string name = 3; // apiKey名称
+  string in = 4; // apiKey位置
+  string flow = 5; // oauth2流程
+  string authorization_url = 6; // oauth2授权URL
+  string token_url = 7; // oauth2 token URL
+  map<string, string> scopes = 8; // oauth2范围
+}
+
+// 安全要求
+message Security {
+  map<string, string> security_requirement = 1; // 安全要求
+}
+
+// 值定义
+message Value {
+  oneof kind {
+    string string_value = 1; // 字符串值
+    double number_value = 2; // 数字值
+    int32 integer_value = 3; // 整数值
+    bool boolean_value = 4; // 布尔值
+  }
+} 

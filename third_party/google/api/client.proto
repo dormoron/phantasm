@@ -1,0 +1,63 @@
+// Copyright 2019 Google LLC.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+syntax = "proto3";
+
+package google.api;
+
+import "google/protobuf/descriptor.proto";
+
+option go_package = "google.golang.org/genproto/googleapis/api/annotations;annotations";
+option java_multiple_files = true;
+option java_outer_classname = "ClientProto";
+option java_package = "com.google.api";
+option objc_class_prefix = "GAPI";
+
+extend google.protobuf.MethodOptions {
+  // 方法签名，如 "user_id,gid"
+  repeated string method_signature = 1051;
+}
+
+// 方法参数设置
+message MethodSettings {
+  // 允许的超时时间，如 "30s", "5m"
+  string timeout = 1;
+
+  // 重试设置
+  repeated string retry_codes = 2;
+
+  // 请求分发策略
+  string routing = 3;
+
+  // 自动分页设置
+  bool auto_pagination = 4;
+
+  // 长时间运行操作设置
+  LongRunning long_running = 5;
+
+  // 长时间运行操作设置
+  message LongRunning {
+    // 初始轮询延迟
+    string initial_poll_delay = 1;
+
+    // 轮询延迟倍数
+    float poll_delay_multiplier = 2;
+
+    // 最大轮询延迟
+    string max_poll_delay = 3;
+
+    // 总轮询超时
+    string total_poll_timeout = 4;
+  }
+} 

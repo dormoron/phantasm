@@ -1,0 +1,54 @@
+syntax = "proto3";
+
+package errors;
+
+option go_package = "github.com/dormoron/phantasm/third_party/errors;errors";
+option java_multiple_files = true;
+option java_outer_classname = "ErrorsProto";
+option java_package = "com.dormoron.phantasm.errors";
+option objc_class_prefix = "PHS";
+
+// Error 定义标准错误结构
+message Error {
+  // 错误码，例如 NOT_FOUND, ALREADY_EXISTS
+  int32 code = 1;
+  
+  // 错误的命名空间或领域
+  string namespace = 2;
+  
+  // 业务错误码，用于标识具体的错误类型
+  string reason = 3;
+  
+  // 面向用户的错误消息
+  string message = 4;
+  
+  // 错误元数据，存储键值对
+  map<string, string> metadata = 5;
+}
+
+// ErrorDetails 包含更多的错误信息
+message ErrorDetails {
+  // 完整错误栈，用于调试
+  string stack = 1;
+  
+  // 错误发生的时间戳（Unix时间戳，毫秒）
+  int64 timestamp = 2;
+  
+  // 请求ID，用于跟踪和诊断
+  string request_id = 3;
+  
+  // 错误发生的服务名称
+  string service = 4;
+  
+  // 错误发生的环境（如 dev, test, prod）
+  string environment = 5;
+}
+
+// ErrorResponse 是API返回的标准错误响应
+message ErrorResponse {
+  // 主要错误信息
+  Error error = 1;
+  
+  // 详细错误信息（可选）
+  ErrorDetails details = 2;
+} 

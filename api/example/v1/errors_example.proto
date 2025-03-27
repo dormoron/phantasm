@@ -1,0 +1,49 @@
+syntax = "proto3";
+
+package api.example.v1;
+
+import "google/api/annotations.proto";
+import "third_party/errors/errors.proto";
+
+option go_package = "github.com/dormoron/phantasm/api/example/v1";
+option java_multiple_files = true;
+option java_outer_classname = "ErrorsExampleProto";
+option java_package = "com.dormoron.phantasm.api.example.v1";
+option objc_class_prefix = "AEX";
+
+// ErrorsExampleService 演示如何在服务中使用标准错误处理
+service ErrorsExampleService {
+  // GetItem 获取项目并返回标准错误格式
+  rpc GetItem(GetItemRequest) returns (GetItemResponse) {
+    option (google.api.http) = {
+      get: "/v1/items/{item_id}"
+    };
+  }
+}
+
+// GetItemRequest 获取项目的请求
+message GetItemRequest {
+  // 项目ID
+  string item_id = 1;
+}
+
+// GetItemResponse 获取项目的响应
+message GetItemResponse {
+  // 项目数据
+  Item item = 1;
+  
+  // 标准错误响应
+  errors.ErrorResponse error = 2;
+}
+
+// Item 表示一个项目
+message Item {
+  // 项目ID
+  string id = 1;
+  
+  // 项目名称
+  string name = 2;
+  
+  // 创建时间
+  int64 created_at = 3;
+}

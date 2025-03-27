@@ -1,0 +1,78 @@
+syntax = "proto3";
+
+package buf.config;
+
+option go_package = "github.com/dormoron/phantasm/third_party/buf;buf";
+option java_multiple_files = true;
+option java_outer_classname = "BufProto";
+option java_package = "com.dormoron.phantasm.buf";
+option objc_class_prefix = "PHS";
+
+// BufConfig 定义了Buf工具的配置
+message BufConfig {
+  // 版本号
+  string version = 1;
+  
+  // 名称
+  string name = 2;
+  
+  // 构建配置
+  Build build = 3;
+  
+  // Lint配置
+  Lint lint = 4;
+  
+  // Breaking配置
+  Breaking breaking = 5;
+  
+  // 依赖项
+  repeated Dependency dependencies = 6;
+}
+
+// Build 定义构建选项
+message Build {
+  // 排除的文件模式
+  repeated string excludes = 1;
+  
+  // 构建目标
+  repeated string targets = 2;
+  
+  // 输出格式
+  string out = 3;
+}
+
+// Lint 定义代码检查选项
+message Lint {
+  // 使用的检查规则集
+  repeated string use = 1;
+  
+  // 忽略的规则
+  repeated string ignore = 2;
+  
+  // 忽略的路径
+  repeated string ignore_paths = 3;
+  
+  // 允许的扩展
+  repeated string allow_extensions = 4;
+}
+
+// Breaking 定义破坏性变更检查选项
+message Breaking {
+  // 使用的检查规则集
+  repeated string use = 1;
+  
+  // 忽略的规则
+  repeated string ignore = 2;
+  
+  // 忽略的路径
+  repeated string ignore_paths = 3;
+}
+
+// Dependency 定义依赖项
+message Dependency {
+  // 远程仓库
+  string remote = 1;
+  
+  // 引用的版本标签
+  string ref = 2;
+} 

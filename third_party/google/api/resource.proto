@@ -1,0 +1,95 @@
+// Copyright 2019 Google LLC.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+syntax = "proto3";
+
+package google.api;
+
+import "google/protobuf/descriptor.proto";
+
+option go_package = "google.golang.org/genproto/googleapis/api/annotations;annotations";
+option java_multiple_files = true;
+option java_outer_classname = "ResourceProto";
+option java_package = "com.google.api";
+option objc_class_prefix = "GAPI";
+
+// 用于定义API资源的扩展
+extend google.protobuf.FileOptions {
+  // 定义文件中的资源列表
+  repeated ResourceDescriptor resource_definition = 1053;
+}
+
+extend google.protobuf.MessageOptions {
+  // 定义消息表示的资源
+  ResourceDescriptor resource = 1053;
+}
+
+extend google.protobuf.FieldOptions {
+  // 定义字段引用的资源
+  ResourceReference resource_reference = 1055;
+}
+
+// ServiceOptions的resource_definition扩展使用不同的标识符
+extend google.protobuf.ServiceOptions {
+  // 定义服务中的资源
+  repeated ResourceDescriptor service_resource_definition = 1154;
+}
+
+// ResourceDescriptor 描述一个资源类型
+message ResourceDescriptor {
+  // 资源类型，例如 "example.googleapis.com/Project"
+  string type = 1;
+
+  // 资源的名称模式，例如 "projects/{project}"
+  repeated string pattern = 2;
+
+  // 资源的名称字段，默认为 "name"
+  string name_field = 3;
+
+  // 资源的历史配置
+  History history = 4;
+
+  // 资源的生命周期
+  enum History {
+    // 未指定历史
+    HISTORY_UNSPECIFIED = 0;
+
+    // 资源创建后就不可变更
+    ORIGINALLY_SINGLE_PATTERN = 1;
+
+    // 资源以前有多个模式，现在只有一个
+    FUTURE_MULTI_PATTERN = 2;
+  }
+
+  // 资源的风格配置
+  Style style = 5;
+
+  // 风格枚举
+  enum Style {
+    // 未指定风格
+    STYLE_UNSPECIFIED = 0;
+    
+    // 领域对象资源
+    DECLARATIVE = 1;
+  }
+}
+
+// ResourceReference 描述字段引用的资源类型
+message ResourceReference {
+  // 引用的资源类型
+  string type = 1;
+
+  // 引用多种资源类型时的子类型
+  string child_type = 2;
+} 

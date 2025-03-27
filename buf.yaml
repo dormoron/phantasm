@@ -1,0 +1,20 @@
+version: v1
+name: buf.build/dormoron/phantasm
+deps:
+  - buf.build/googleapis/googleapis
+build:
+  excludes:
+    - tools/
+lint:
+  use:
+    - DEFAULT
+  except:
+    - PACKAGE_VERSION_SUFFIX
+    - FIELD_LOWER_SNAKE_CASE
+    - ENUM_VALUE_PREFIX
+    - ENUM_VALUE_UPPER_SNAKE_CASE
+  ignore:
+    - third_party/google/api/
+breaking:
+  use:
+    - FILE 

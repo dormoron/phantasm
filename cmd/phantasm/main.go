@@ -5,6 +5,7 @@ import (
 	"log"
 
 	"github.com/dormoron/phantasm"
+	"github.com/dormoron/phantasm/cmd/phantasm/internal/change"
 	"github.com/dormoron/phantasm/cmd/phantasm/internal/project"
 	"github.com/dormoron/phantasm/cmd/phantasm/internal/proto"
 	"github.com/dormoron/phantasm/cmd/phantasm/internal/run"
@@ -36,6 +37,7 @@ func init() {
 	rootCmd.AddCommand(proto.CmdProto)
 	rootCmd.AddCommand(run.CmdRun)
 	rootCmd.AddCommand(upgrade.CmdUpgrade)
+	rootCmd.AddCommand(change.CmdChange)
 	rootCmd.AddCommand(versionCmd)
 
 	// 添加 -v 标志作为 --version 的别名

@@ -49,12 +49,18 @@ func (g *GithubAPI) GetReleaseInfo(version string) ReleaseInfo {
 	}
 	resp, code := requestGithubAPI(api, http.MethodGet, nil, g.Token)
 	if code != http.StatusOK {
-		printGithubErrorInfo(resp)
+		if code == http.StatusNotFound {
+			fmt.Fprintf(os.Stderr, "未找到指定版本 %s 的发布信息\n", version)
+		} else {
+			printGithubErrorInfo(resp)
+		}
+		return ReleaseInfo{}
 	}
 	releaseInfo := ReleaseInfo{}
 	err := json.Unmarshal(resp, &releaseInfo)
 	if err != nil {
-		fatal(err)
+		fmt.Fprintf(os.Stderr, "解析发布信息失败: %v\n", err)
+		return ReleaseInfo{}
 	}
 	return releaseInfo
 }
@@ -62,19 +68,29 @@ func (g *GithubAPI) GetReleaseInfo(version string) ReleaseInfo {
 // GetCommitsInfo 获取phantasm提交信息
 func (g *GithubAPI) GetCommitsInfo() []CommitInfo {
 	info := g.GetReleaseInfo("latest")
+	if info.PublishedAt == "" {
+		fmt.Fprintf(os.Stderr, "无法获取最新发布信息，请检查网络连接或GitHub Token\n")
+		return nil
+	}
 	page := 1
 	prePage := 100
 	var list []CommitInfo
 	for {
-		url := fmt.Sprintf("https://api.github.com/repos/%s/%s/commits?pre_page=%d&page=%d&since=%s", g.Owner, g.Repo, prePage, page, info.PublishedAt)
+		url := fmt.Sprintf("https://api.github.com/repos/%s/%s/commits?per_page=%d&page=%d&since=%s", g.Owner, g.Repo, prePage, page, info.PublishedAt)
 		resp, code := requestGithubAPI(url, http.MethodGet, nil, g.Token)
 		if code != http.StatusOK {
-			printGithubErrorInfo(resp)
+			if code == http.StatusNotFound {
+				fmt.Fprintf(os.Stderr, "未找到提交信息\n")
+			} else {
+				printGithubErrorInfo(resp)
+			}
+			break
 		}
 		var res []CommitInfo
 		err := json.Unmarshal(resp, &res)
 		if err != nil {
-			fatal(err)
+			fmt.Fprintf(os.Stderr, "解析提交信息失败: %v\n", err)
+			break
 		}
 		list = append(list, res...)
 		if len(res) < prePage {
@@ -100,19 +116,23 @@ func requestGithubAPI(url string, method string, body io.Reader, token string) (
 	cli := &http.Client{Timeout: 60 * time.Second}
 	request, err := http.NewRequest(method, url, body)
 	if err != nil {
-		fatal(err)
+		fmt.Fprintf(os.Stderr, "创建请求失败: %v\n", err)
+		return nil, http.StatusInternalServerError
 	}
 	if token != "" {
-		request.Header.Add("Authorization", fmt.Sprintf("token %s", token))
+		request.Header.Add("Authorization", fmt.Sprintf("Bearer %s", token))
 	}
+	request.Header.Add("Accept", "application/vnd.github.v3+json")
 	resp, err := cli.Do(request)
 	if err != nil {
-		fatal(err)
+		fmt.Fprintf(os.Stderr, "请求GitHub API失败: %v\n", err)
+		return nil, http.StatusInternalServerError
 	}
 	defer resp.Body.Close()
 	resBody, err := io.ReadAll(resp.Body)
 	if err != nil {
-		fatal(err)
+		fmt.Fprintf(os.Stderr, "读取响应失败: %v\n", err)
+		return nil, http.StatusInternalServerError
 	}
 	return resBody, resp.StatusCode
 }

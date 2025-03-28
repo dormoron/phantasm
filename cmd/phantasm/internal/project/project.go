@@ -1834,6 +1834,29 @@ func writeUTF8File(filePath string, content []byte, perm os.FileMode) error {
 		return err
 	}
 
+	// 这些文件类型不应添加 BOM，否则会导致工具链报错或解析问题
+	ext := filepath.Ext(filePath)
+	fileName := filepath.Base(filePath)
+	skipBOM := false
+
+	// 跳过 BOM 的文件类型列表
+	if fileName == "go.mod" || fileName == "go.sum" ||
+		ext == ".go" || ext == ".sh" || ext == ".yaml" || ext == ".yml" ||
+		ext == ".json" || ext == ".proto" || ext == ".mod" || ext == ".sum" {
+		skipBOM = true
+	}
+
+	if skipBOM {
+		// 直接写入内容，不添加 BOM
+		err := os.WriteFile(filePath, content, perm)
+		if err != nil {
+			fmt.Printf("写入文件 %s 失败: %v\n", filePath, err)
+			return err
+		}
+		fmt.Printf("成功写入文件: %s (%d 字节)\n", filePath, len(content))
+		return nil
+	}
+
 	// 添加UTF-8 BOM (Byte Order Mark)，确保Windows系统正确识别UTF-8编码
 	// BOM是可选的，但在Windows中有助于确保正确识别文件编码
 	utf8BOM := []byte{0xEF, 0xBB, 0xBF}

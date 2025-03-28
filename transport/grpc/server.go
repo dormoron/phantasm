@@ -30,7 +30,6 @@ type ServerOption func(*Server)
 // Server 是gRPC服务器
 type Server struct {
 	*eidola.Server
-	server   *grpc.Server
 	listener net.Listener
 	tlsConf  *tls.Config
 	endpoint *url.URL
@@ -58,52 +57,44 @@ func NewServer(opts ...ServerOption) *Server {
 		o(srv)
 	}
 
+	// 创建eidola服务器选项
+	eidolaOpts := []eidola.ServerOption{}
+
+	// 添加TLS配置
+	if srv.tlsConf != nil {
+		eidolaOpts = append(eidolaOpts, eidola.ServerWithTLS(credentials.NewTLS(srv.tlsConf)))
+	}
+
+	// 添加超时配置
+	// 注意: eidola v0.1.0可能不支持超时选项，保留以备将来使用
+	// eidolaOpts = append(eidolaOpts, eidola.ServerWithTimeout(srv.timeout))
+
 	// 创建eidola服务器
-	server, err := eidola.NewServer(srv.name)
+	server, err := eidola.NewServer(srv.name, eidolaOpts...)
 	if err != nil {
 		// 记录错误并返回默认服务器
 		srv.logger.Error("Failed to create eidola server: " + err.Error())
 	} else {
 		srv.Server = server
+
+		// 注册健康检查
+		if srv.Server.Server != nil {
+			grpc_health_v1.RegisterHealthServer(srv.Server.Server, srv.health)
+			// 注册反射服务，以支持grpcurl等工具
+			reflection.Register(srv.Server.Server)
+		}
 	}
 
-	// 创建grpc服务器
-	grpcOpts := []grpc.ServerOption{}
-
-	// 如果eidola服务器创建成功，添加拦截器
-	if srv.Server != nil && srv.Server.Server != nil {
-		// 注意：由于 eidola v0.1.0 版本可能不支持这些拦截器方法，暂时不添加
-		// 未来版本可以取消注释启用
-		/*
-			grpcOpts = append(grpcOpts,
-				grpc.ChainUnaryInterceptor(
-					srv.Server.UnaryServerInterceptor(),
-				),
-				grpc.ChainStreamInterceptor(
-					srv.Server.StreamServerInterceptor(),
-				),
-			)
-		*/
-	}
-
-	if srv.tlsConf != nil {
-		grpcOpts = append(grpcOpts, grpc.Creds(credentials.NewTLS(srv.tlsConf)))
-	}
-
-	// 添加自定义选项
-	grpcOpts = append(grpcOpts, srv.options...)
-
-	srv.server = grpc.NewServer(grpcOpts...)
-
-	// 注册健康检查
-	grpc_health_v1.RegisterHealthServer(srv.server, srv.health)
-	// 注册反射服务，以支持grpcurl等工具
-	reflection.Register(srv.server)
 	return srv
 }
 
 // Start 启动gRPC服务器
 func (s *Server) Start(ctx context.Context) error {
+	// 确保eidola服务器已创建
+	if s.Server == nil {
+		return errors.New("eidola server not initialized")
+	}
+
 	listener, err := net.Listen(s.network, s.address)
 	if err != nil {
 		return err
@@ -127,11 +118,15 @@ func (s *Server) Start(ctx context.Context) error {
 
 	s.logger.Info("[gRPC] server listening on: " + s.address)
 	s.health.Resume()
+
+	// 使用eidola的服务启动功能
 	go func() {
-		if err := s.server.Serve(listener); err != nil {
+		// eidola的Start方法接受地址字符串，而不是listener
+		if err := s.Server.Start(s.address); err != nil {
 			s.logger.Error("[gRPC] serve error: " + err.Error())
 		}
 	}()
+
 	return nil
 }
 
@@ -139,7 +134,12 @@ func (s *Server) Start(ctx context.Context) error {
 func (s *Server) Stop(ctx context.Context) error {
 	s.logger.Info("[gRPC] server stopping")
 	s.health.Shutdown()
-	s.server.GracefulStop()
+
+	// 使用eidola的优雅关闭功能
+	if s.Server != nil {
+		s.Server.Close() // 使用Close方法代替Stop
+		return nil
+	}
 	return nil
 }
 
@@ -153,7 +153,9 @@ func (s *Server) Endpoint() (*url.URL, error) {
 
 // RegisterService 注册gRPC服务
 func (s *Server) RegisterService(sd *grpc.ServiceDesc, ss interface{}) {
-	s.server.RegisterService(sd, ss)
+	if s.Server != nil && s.Server.Server != nil {
+		s.Server.Server.RegisterService(sd, ss)
+	}
 }
 
 // Network 设置网络类型，例如 "tcp", "tcp4", "tcp6", "unix" 或 "unixpacket"

@@ -347,53 +347,72 @@ func main() {
 		httpServerContent := fmt.Sprintf(`package server
 
 import (
-	"github.com/dormoron/phantasm/log"
-	"github.com/dormoron/phantasm/transport/http"
-	
-	"%s/internal/conf"
-	"%s/internal/pkg/middleware"
-	"%s/internal/service"
-	
-	"github.com/dormoron/mist"
+    "github.com/dormoron/mist"
+    "github.com/dormoron/phantasm/log"
+    "github.com/dormoron/phantasm/middleware/logging"
+    "github.com/dormoron/phantasm/middleware/recovery"
+    "github.com/dormoron/phantasm/transport/http"
+    
+    "%s/internal/conf"
+    "%s/internal/service"
 )
 
 // NewHTTPServer 创建HTTP服务器
 func NewHTTPServer(c *conf.Server, logger log.Logger, svc *service.Service) *http.Server {
-	engine := mist.Default()
-	
-	// 全局中间件
-	engine.Use(middleware.Logger(logger))
-	engine.Use(middleware.Recovery(logger))
-	engine.Use(middleware.CORS())
-	
-	// 注册API路由组
-	api := engine.Group("/api")
-	{
-		v1 := api.Group("/v1")
-		{
-			v1.GET("/hello/:name", func(c *mist.Context) {
-				name := c.Param("name")
-				message := "Hello " + name
-				c.JSON(200, map[string]string{"message": message})
-			})
-		}
-	}
-	
-	// 健康检查
-	engine.GET("/health", func(c *mist.Context) {
-		c.JSON(200, map[string]string{"status": "ok"})
-	})
-	
-	srv := http.NewServer(
-		http.Address(c.Http.Addr),
-		http.Timeout(c.Http.Timeout.AsDuration()),
-		http.Logger(logger),
-		http.Engine(engine),
-	)
-	
-	return srv
-}
-`, module, module, module)
+    var opts = []http.ServerOption{
+        http.Address(c.Http.Addr),
+        http.Timeout(c.Http.Timeout.AsDuration()),
+        http.Logger(logger),
+    }
+    
+    srv := http.NewServer(opts...)
+    
+    // 创建Mist引擎并设置中间件
+    mServer, err := http.NewHTTPServer(
+        http.WithAddress(c.Http.Addr),
+        http.WithTimeout(c.Http.Timeout.AsDuration()),
+    )
+    if err != nil {
+        panic(err)
+    }
+    
+    // 使用中间件
+    mServer.UseMiddleware(
+        recovery.Recovery(),
+        logging.Logging(
+            logging.WithLogger(logger),
+            logging.WithLogRequestBody(true),
+            logging.WithLogResponseBody(true),
+        ),
+    )
+    
+    // 注册API路由组
+    api := mServer.Group("/api")
+    {
+        v1 := api.Group("/v1")
+        {
+            v1.GET("/hello/:name", func(c *mist.Context) {
+                nameVal, err := c.PathValue("name").String()
+                if err != nil {
+                    c.RespondWithJSON(400, map[string]string{"error": "无效的名称参数"})
+                    return
+                }
+                // 调用服务实现
+                message := "Hello " + nameVal
+                c.RespondWithJSON(200, map[string]interface{}{
+                    "message": message,
+                })
+            })
+        }
+    }
+    
+    // 健康检查
+    mServer.GET("/health", func(c *mist.Context) {
+        c.RespondWithJSON(200, map[string]string{"status": "ok"})
+    })
+    
+    return srv
+}`, module, module)
 
 		if err := writeUTF8File(filepath.Join(projectPath, "internal", "server", "http.go"), []byte(httpServerContent), 0644); err != nil {
 			return err
@@ -405,29 +424,42 @@ func NewHTTPServer(c *conf.Server, logger log.Logger, svc *service.Service) *htt
 		grpcServerContent := fmt.Sprintf(`package server
 
 import (
-	"github.com/dormoron/phantasm/log"
-	"github.com/dormoron/phantasm/transport/grpc"
-	
-	"%s/internal/conf"
-	"%s/internal/service"
-	
-	v1 "%s/api/%s/v1"
+    "github.com/dormoron/phantasm/log"
+    "github.com/dormoron/phantasm/middleware/logging"
+    "github.com/dormoron/phantasm/middleware/recovery"
+    "github.com/dormoron/phantasm/transport/grpc"
+    
+    "%s/internal/conf"
+    "%s/internal/service"
+    
+    v1 "%s/api/%s/v1"
 )
 
 // NewGRPCServer 创建gRPC服务器
 func NewGRPCServer(c *conf.Server, logger log.Logger, svc *service.Service) *grpc.Server {
-	srv := grpc.NewServer(
-		grpc.Address(c.Grpc.Addr),
-		grpc.Timeout(c.Grpc.Timeout.AsDuration()),
-		grpc.Logger(logger),
-	)
-	
-	// 注册服务
-	v1.Register%sServer(srv, svc)
-	
-	return srv
-}
-`, module, module, module, name, strings.Title(name))
+    // 创建gRPC服务器
+    server := grpc.NewServer(
+        grpc.Address(c.Grpc.Addr),
+        grpc.Timeout(c.Grpc.Timeout.AsDuration()),
+        grpc.Logger(logger),
+        grpc.Name("%s-service"),
+    )
+    
+    // 使用中间件
+    server.UseMiddleware(
+        recovery.Recovery(),
+        logging.Logging(
+            logging.WithLogger(logger),
+            logging.WithLogRequestBody(true),
+            logging.WithLogResponseBody(true),
+        ),
+    )
+    
+    // 注册服务
+    v1.Register%sServer(server, svc)
+    
+    return server
+}`, module, module, module, name, name, strings.Title(name))
 
 		if err := writeUTF8File(filepath.Join(projectPath, "internal", "server", "server.go"), []byte(grpcServerContent), 0644); err != nil {
 			return err
@@ -1455,58 +1487,77 @@ func CORS() mist.HandlerFunc {
 		return err
 	}
 
-	// 修改HTTP服务器文件，添加中间件支持
+	// HTTP服务器
 	if withHttp {
 		httpServerContent := fmt.Sprintf(`package server
 
 import (
-	"github.com/dormoron/phantasm/log"
-	"github.com/dormoron/phantasm/transport/http"
-	
-	"%s/internal/conf"
-	"%s/internal/pkg/middleware"
-	"%s/internal/service"
-	
-	"github.com/dormoron/mist"
+    "github.com/dormoron/mist"
+    "github.com/dormoron/phantasm/log"
+    "github.com/dormoron/phantasm/middleware/logging"
+    "github.com/dormoron/phantasm/middleware/recovery"
+    "github.com/dormoron/phantasm/transport/http"
+    
+    "%s/internal/conf"
+    "%s/internal/service"
 )
 
 // NewHTTPServer 创建HTTP服务器
 func NewHTTPServer(c *conf.Server, logger log.Logger, svc *service.Service) *http.Server {
-	engine := mist.Default()
-	
-	// 全局中间件
-	engine.Use(middleware.Logger(logger))
-	engine.Use(middleware.Recovery(logger))
-	engine.Use(middleware.CORS())
-	
-	// 注册API路由组
-	api := engine.Group("/api")
-	{
-		v1 := api.Group("/v1")
-		{
-			v1.GET("/hello/:name", func(c *mist.Context) {
-				name := c.Param("name")
-				message := "Hello " + name
-				c.JSON(200, map[string]string{"message": message})
-			})
-		}
-	}
-	
-	// 健康检查
-	engine.GET("/health", func(c *mist.Context) {
-		c.JSON(200, map[string]string{"status": "ok"})
-	})
-	
-	srv := http.NewServer(
-		http.Address(c.Http.Addr),
-		http.Timeout(c.Http.Timeout.AsDuration()),
-		http.Logger(logger),
-		http.Engine(engine),
-	)
-	
-	return srv
-}
-`, module, module, module)
+    var opts = []http.ServerOption{
+        http.Address(c.Http.Addr),
+        http.Timeout(c.Http.Timeout.AsDuration()),
+        http.Logger(logger),
+    }
+    
+    srv := http.NewServer(opts...)
+    
+    // 创建Mist引擎并设置中间件
+    mServer, err := http.NewHTTPServer(
+        http.WithAddress(c.Http.Addr),
+        http.WithTimeout(c.Http.Timeout.AsDuration()),
+    )
+    if err != nil {
+        panic(err)
+    }
+    
+    // 使用中间件
+    mServer.UseMiddleware(
+        recovery.Recovery(),
+        logging.Logging(
+            logging.WithLogger(logger),
+            logging.WithLogRequestBody(true),
+            logging.WithLogResponseBody(true),
+        ),
+    )
+    
+    // 注册API路由组
+    api := mServer.Group("/api")
+    {
+        v1 := api.Group("/v1")
+        {
+            v1.GET("/hello/:name", func(c *mist.Context) {
+                nameVal, err := c.PathValue("name").String()
+                if err != nil {
+                    c.RespondWithJSON(400, map[string]string{"error": "无效的名称参数"})
+                    return
+                }
+                // 调用服务实现
+                message := "Hello " + nameVal
+                c.RespondWithJSON(200, map[string]interface{}{
+                    "message": message,
+                })
+            })
+        }
+    }
+    
+    // 健康检查
+    mServer.GET("/health", func(c *mist.Context) {
+        c.RespondWithJSON(200, map[string]string{"status": "ok"})
+    })
+    
+    return srv
+}`, module, module)
 
 		if err := writeUTF8File(filepath.Join(projectPath, "internal", "server", "http.go"), []byte(httpServerContent), 0644); err != nil {
 			return err

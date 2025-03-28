@@ -60,27 +60,10 @@ func MiddlewareAdapter(m middleware.Middleware) mist.Middleware {
 					statusCode = int(phantasmErr.Code)
 				}
 
-				// 使用正确的Context API设置状态码和响应
+				// 中止处理并设置状态码
 				c.AbortWithStatus(statusCode)
-				c.RespondWithJSON(statusCode, map[string]string{
-					"error": err.Error(),
-				})
 				return
 			}
 		}
-	}
-}
-
-// UseMiddleware 在HTTP服务器上使用Cosmos中间件
-func (s *HTTPServer) UseMiddleware(middleware ...middleware.Middleware) {
-	for _, m := range middleware {
-		s.mistServer.Use(MiddlewareAdapter(m))
-	}
-}
-
-// UseMiddleware 在路由组上使用Cosmos中间件
-func (g *RouterGroup) UseMiddleware(middleware ...middleware.Middleware) {
-	for _, m := range middleware {
-		g.mistServer.Use(MiddlewareAdapter(m))
 	}
 }

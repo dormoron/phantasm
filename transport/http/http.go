@@ -2,8 +2,7 @@ package http
 
 import (
 	"context"
-	"crypto/tls"
-	"net"
+	"errors"
 	"net/http"
 	"net/url"
 	"time"
@@ -31,14 +30,6 @@ func WithTimeout(timeout time.Duration) HTTPServerOption {
 	}
 }
 
-// WithMiddleware 设置HTTP中间件（已废弃，请使用UseMiddleware方法）
-// Deprecated: 使用HTTPServer.UseMiddleware代替
-func WithMiddleware(m ...middleware.Middleware) HTTPServerOption {
-	return func(s *HTTPServer) {
-		s.middleware = m
-	}
-}
-
 // WithTLS 设置TLS配置
 func WithTLS(cert, key string) HTTPServerOption {
 	return func(s *HTTPServer) {
@@ -54,17 +45,24 @@ type HTTPServer struct {
 	middleware []middleware.Middleware
 	tlsCert    string
 	tlsKey     string
-	server     *http.Server
 	mistServer *mist.HTTPServer
+	running    bool
+	endpoint   *url.URL
+	httpServer *http.Server // 添加标准库的HTTP服务器实例，用于优雅关闭
 }
 
 // NewHTTPServer 创建一个新的HTTP服务器
 func NewHTTPServer(opts ...HTTPServerOption) (*HTTPServer, error) {
+	// 创建mist HTTP服务器选项
+	mistOpts := []mist.HTTPServerOption{}
+
 	s := &HTTPServer{
 		addr:       ":8000",
 		timeout:    time.Second * 30,
-		mistServer: mist.InitHTTPServer(),
+		mistServer: mist.InitHTTPServer(mistOpts...),
+		running:    false,
 	}
+
 	for _, o := range opts {
 		o(s)
 	}
@@ -79,55 +77,148 @@ func NewHTTPServer(opts ...HTTPServerOption) (*HTTPServer, error) {
 
 // Start 启动HTTP服务器
 func (s *HTTPServer) Start(ctx context.Context) error {
-	s.server = &http.Server{
+	// 构建端点URL
+	scheme := "http"
+	if s.tlsCert != "" && s.tlsKey != "" {
+		scheme = "https"
+	}
+
+	host := s.addr
+	if host[0] == ':' {
+		host = "0.0.0.0" + host
+	}
+
+	normalized, err := endpoint.NormalizeEndpoint(host, scheme)
+	if err != nil {
+		return err
+	}
+
+	s.endpoint, err = url.Parse(normalized)
+	if err != nil {
+		return err
+	}
+
+	// 创建一个标准库的HTTP服务器，封装mist服务器
+	httpServer := &http.Server{
 		Addr:         s.addr,
 		Handler:      s.mistServer,
 		ReadTimeout:  s.timeout,
 		WriteTimeout: s.timeout,
 	}
 
-	ln, err := net.Listen("tcp", s.addr)
-	if err != nil {
-		return err
-	}
+	// 保存标准HTTP服务器实例，用于后续的优雅关闭
+	s.httpServer = httpServer
 
-	if s.tlsCert != "" && s.tlsKey != "" {
-		cert, err := tls.LoadX509KeyPair(s.tlsCert, s.tlsKey)
-		if err != nil {
-			return err
+	// 启动服务器
+	go func() {
+		var err error
+		if s.tlsCert != "" && s.tlsKey != "" {
+			// 使用标准库的ListenAndServeTLS进行TLS支持
+			err = httpServer.ListenAndServeTLS(s.tlsCert, s.tlsKey)
+		} else {
+			// 为了统一处理，我们使用标准库的http.Server
+			// 而不是直接调用s.mistServer.Start(s.addr)
+			err = httpServer.ListenAndServe()
 		}
-		s.server.TLSConfig = &tls.Config{
-			Certificates: []tls.Certificate{cert},
-		}
-		return s.server.ServeTLS(ln, s.tlsCert, s.tlsKey)
-	}
 
-	return s.server.Serve(ln)
+		if err != nil && err != http.ErrServerClosed {
+			// 如果有需要，这里可以添加错误日志
+		}
+	}()
+
+	s.running = true
+	return nil
 }
 
 // Stop 停止HTTP服务器
 func (s *HTTPServer) Stop(ctx context.Context) error {
-	return s.server.Shutdown(ctx)
+	s.running = false
+
+	// 如果我们有标准库的HTTP服务器实例，使用其优雅关闭功能
+	if s.httpServer != nil {
+		// 创建一个子上下文用于关闭超时控制
+		shutdownCtx, cancel := context.WithTimeout(ctx, s.timeout)
+		defer cancel()
+
+		// 使用标准库的Shutdown方法进行优雅关闭
+		return s.httpServer.Shutdown(shutdownCtx)
+	}
+
+	// 退化情况：如果没有httpServer实例，等待超时
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	case <-time.After(s.timeout):
+		return nil
+	}
 }
 
 // Endpoint 返回HTTP服务器的URL端点
 func (s *HTTPServer) Endpoint() (*url.URL, error) {
-	addr := s.addr
-	if addr[0] == ':' {
-		addr = "0.0.0.0" + addr
+	if !s.running {
+		return nil, errors.New("HTTP server is not started")
 	}
-	scheme := "http"
-	if s.tlsCert != "" && s.tlsKey != "" {
-		scheme = "https"
-	}
+	return s.endpoint, nil
+}
 
-	// 使用endpoint.NormalizeEndpoint处理URL
-	normalized, err := endpoint.NormalizeEndpoint(addr, scheme)
-	if err != nil {
-		return nil, err
-	}
+// Group 创建路由组
+func (s *HTTPServer) Group(prefix string) interface{} {
+	return s.mistServer.Group(prefix)
+}
 
-	return url.Parse(normalized)
+// UseMiddleware 在HTTP服务器上使用Phantasm中间件
+func (s *HTTPServer) UseMiddleware(middleware ...middleware.Middleware) {
+	for _, m := range middleware {
+		// 将Phantasm中间件适配到Mist中间件
+		s.mistServer.Use(func(next mist.HandleFunc) mist.HandleFunc {
+			return func(c *mist.Context) {
+				// 包装一个phantasm处理程序
+				handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+					// 将mist上下文作为请求的上下文
+					c.Request = c.Request.WithContext(ctx)
+
+					// 调用下一个处理程序
+					next(c)
+
+					// 返回空响应（因为响应已通过mist.Context直接写入）
+					return nil, nil
+				}
+
+				// 准备上下文信息
+				ctx := c.Request.Context()
+				ctx = context.WithValue(ctx, "path", c.Request.URL.Path)
+				ctx = context.WithValue(ctx, "method", c.Request.Method)
+
+				// 添加头信息到上下文
+				headers := make(map[string]string)
+				for k, v := range c.Request.Header {
+					if len(v) > 0 {
+						headers[k] = v[0]
+					}
+				}
+				ctx = context.WithValue(ctx, "headers", headers)
+
+				// 获取客户端IP
+				clientIP := c.ClientIP()
+				if clientIP != "" {
+					ctx = context.WithValue(ctx, "client_ip", clientIP)
+				}
+
+				// 应用phantasm中间件
+				adaptedHandler := m(handler)
+
+				// 调用适配后的处理程序
+				_, err := adaptedHandler(ctx, c.Request)
+				if err != nil {
+					// 处理错误（后续可以扩展具体错误处理逻辑）
+					c.AbortWithStatus(500)
+					c.RespondWithJSON(500, map[string]string{
+						"error": err.Error(),
+					})
+				}
+			}
+		})
+	}
 }
 
 // GET 注册GET方法处理程序
@@ -150,108 +241,7 @@ func (s *HTTPServer) DELETE(path string, handler mist.HandleFunc) {
 	s.mistServer.DELETE(path, handler)
 }
 
-// Group 创建路由组
-func (s *HTTPServer) Group(prefix string) *RouterGroup {
-	if prefix == "" || prefix[0] != '/' {
-		prefix = "/" + prefix
-	}
-
-	return &RouterGroup{
-		prefix:     prefix,
-		mistServer: s.mistServer,
-	}
-}
-
-// RouterGroup 是路由组接口
-type RouterGroup struct {
-	prefix     string
-	parent     *RouterGroup
-	mistServer *mist.HTTPServer
-}
-
-// calculateFullPath 计算完整路径
-func (g *RouterGroup) calculateFullPath(path string) string {
-	if path == "" || path[0] != '/' {
-		path = "/" + path
-	}
-
-	if g.parent == nil {
-		return g.prefix + path
-	}
-
-	return g.parent.calculateFullPath("") + g.prefix + path
-}
-
-// Group 创建子路由组
-func (g *RouterGroup) Group(prefix string) *RouterGroup {
-	if prefix == "" || prefix[0] != '/' {
-		prefix = "/" + prefix
-	}
-
-	return &RouterGroup{
-		prefix:     prefix,
-		parent:     g,
-		mistServer: g.mistServer,
-	}
-}
-
-// GET 在路由组中注册GET方法处理程序
-func (g *RouterGroup) GET(path string, handler mist.HandleFunc) {
-	fullPath := g.calculateFullPath(path)
-	g.mistServer.GET(fullPath, handler)
-}
-
-// POST 在路由组中注册POST方法处理程序
-func (g *RouterGroup) POST(path string, handler mist.HandleFunc) {
-	fullPath := g.calculateFullPath(path)
-	g.mistServer.POST(fullPath, handler)
-}
-
-// PUT 在路由组中注册PUT方法处理程序
-func (g *RouterGroup) PUT(path string, handler mist.HandleFunc) {
-	fullPath := g.calculateFullPath(path)
-	g.mistServer.PUT(fullPath, handler)
-}
-
-// DELETE 在路由组中注册DELETE方法处理程序
-func (g *RouterGroup) DELETE(path string, handler mist.HandleFunc) {
-	fullPath := g.calculateFullPath(path)
-	g.mistServer.DELETE(fullPath, handler)
-}
-
-// OPTIONS 在路由组中注册OPTIONS方法处理程序
-func (g *RouterGroup) OPTIONS(path string, handler mist.HandleFunc) {
-	fullPath := g.calculateFullPath(path)
-	g.mistServer.OPTIONS(fullPath, handler)
-}
-
-// HEAD 在路由组中注册HEAD方法处理程序
-func (g *RouterGroup) HEAD(path string, handler mist.HandleFunc) {
-	fullPath := g.calculateFullPath(path)
-	g.mistServer.HEAD(fullPath, handler)
-}
-
-// PATCH 在路由组中注册PATCH方法处理程序
-func (g *RouterGroup) PATCH(path string, handler mist.HandleFunc) {
-	fullPath := g.calculateFullPath(path)
-	g.mistServer.PATCH(fullPath, handler)
-}
-
-// Any 在路由组中注册处理任意HTTP方法的处理程序
-func (g *RouterGroup) Any(path string, handler mist.HandleFunc) {
-	fullPath := g.calculateFullPath(path)
-	g.mistServer.GET(fullPath, handler)
-	g.mistServer.POST(fullPath, handler)
-	g.mistServer.PUT(fullPath, handler)
-	g.mistServer.DELETE(fullPath, handler)
-	g.mistServer.OPTIONS(fullPath, handler)
-	g.mistServer.HEAD(fullPath, handler)
-	g.mistServer.PATCH(fullPath, handler)
-}
-
-// Use 应用中间件到路由组
-func (g *RouterGroup) Use(middlewares ...mist.Middleware) {
-	for _, middleware := range middlewares {
-		g.mistServer.Use(middleware)
-	}
+// GetEngine 返回内部的mist HTTP服务器引擎
+func (s *HTTPServer) GetEngine() *mist.HTTPServer {
+	return s.mistServer
 }
